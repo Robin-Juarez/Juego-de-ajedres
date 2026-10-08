@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ajedrez</title>
+<style>
+:root{--bg:#f4f1ea;--fg:#222;--card:#fff;--l:#eeeed2;--d:#769656;--acc:#3b6fb6;--mut:#666;--bd:#ddd;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1f22;--fg:#eee;--card:#2a2c30;--l:#c9c9ae;--d:#5d7a44;--acc:#6aa0e8;--mut:#aaa;--bd:#444}}
+:root[data-theme="dark"]{--bg:#1e1f22;--fg:#eee;--card:#2a2c30;--l:#c9c9ae;--d:#5d7a44;--acc:#6aa0e8;--mut:#aaa;--bd:#444}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:560px}
+h1{text-align:center;margin:8px 0}h2{margin:16px 0 6px;font-size:1.05rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+p,li{line-height:1.45}li{margin:3px 0}.mut{color:var(--mut);text-align:center}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:10px;padding:12px 14px}
+button:hover{border-color:var(--acc)}
+.lv{display:block;width:100%;margin:10px 0;text-align:left}.lv b{display:block}.lv small{color:var(--mut)}
+.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.bar button{flex:1;padding:9px}.bar button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+#msg{text-align:center;font-weight:600;min-height:1.5em;margin:6px 0}
+#bd{--s:calc(min(92vw,560px)/8);display:grid;grid-template-columns:repeat(8,var(--s));width:calc(var(--s)*8);margin:auto;border:2px solid var(--fg);user-select:none}
+.sq{width:var(--s);height:var(--s);display:flex;align-items:center;justify-content:center;font-size:calc(var(--s)*.75);position:relative;cursor:pointer}
+.l{background:var(--l)}.d{background:var(--d)}
+.sq .w{color:var(--pw,#fff);text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000}.sq .b{color:var(--pb,#111);text-shadow:0 0 1px #aaa}
+[data-st="1"] .sq span{text-shadow:none;color:var(--pb)}
+[data-st="2"] .sq span,[data-st="3"] .sq span{display:flex;align-items:center;justify-content:center;width:78%;height:78%;text-shadow:none;font-size:.62em}
+[data-st="2"] .sq span{border-radius:50%;box-shadow:0 2px 3px rgba(0,0,0,.45)}
+[data-st="3"] .sq span{border-radius:22%;border:2px solid;font-family:Georgia,serif;font-weight:700}
+[data-st="2"] .sq .w,[data-st="3"] .sq .w{background:var(--pw);color:var(--pb);border-color:var(--pb)}
+[data-st="2"] .sq .b,[data-st="3"] .sq .b{background:var(--pb);color:var(--pw);border-color:var(--pw)}
+[data-st="4"] .sq .w{color:#fff;text-shadow:0 0 3px #0ff,0 0 9px #0ff,0 0 1px #000}
+[data-st="4"] .sq .b{color:#111;text-shadow:0 0 3px #f0f,0 0 9px #f0f}
+[data-st="5"] .sq span{-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;text-shadow:none}
+[data-st="5"] .sq .w{background-image:linear-gradient(var(--pw),#8a8f99);filter:drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000)}
+[data-st="5"] .sq .b{background-image:linear-gradient(#5a5f69,var(--pb));filter:drop-shadow(0 0 1px #fff)}
+#pv{--s:42px;display:grid;grid-template-columns:repeat(6,var(--s));width:calc(var(--s)*6);margin:10px auto 0;border:2px solid var(--fg)}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.sb{flex:1;min-width:76px;padding:8px 4px;font-size:.8rem;font-weight:600}.sb.on{outline:3px solid var(--acc)}
+.lm{box-shadow:inset 0 0 0 100px rgba(255,235,59,.40)}.sel{box-shadow:inset 0 0 0 100px rgba(80,160,255,.55)}
+.ht{box-shadow:inset 0 0 0 100px rgba(0,200,120,.5)}.ck{box-shadow:inset 0 0 0 100px rgba(255,40,40,.6)}
+.dot::after{content:"";width:28%;height:28%;border-radius:50%;background:rgba(0,0,0,.35);position:absolute}
+.cap{box-shadow:inset 0 0 0 4px rgba(220,40,40,.8)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>♞ Ajedrez</h1>
+
+<div id="menu" class="card">
+  <p class="mut">Elige tu color y la dificultad (abajo puedes cambiar los colores y el estilo de las piezas):</p>
+  <div class="bar"><button id="cw" class="on" onclick="pick('w')">⚪ Blancas</button><button id="cb" onclick="pick('b')">⚫ Negras</button></div>
+  <button class="lv" onclick="start(1)"><b>🟢 Básico</b><small>La máquina comete errores. Ideal para aprender.</small></button>
+  <button class="lv" onclick="start(2)"><b>🟡 Intermedio</b><small>Piensa 2 jugadas por adelantado.</small></button>
+  <button class="lv" onclick="start(3)"><b>🔴 Avanzado</b><small>Piensa 4 jugadas por adelantado. Puede tardar un poco más.</small></button>
+  <button class="lv pri" onclick="show('how')"><b>📖 Cómo jugar y consejos</b><small style="color:#fff">Movimientos, reglas especiales y estrategia</small></button>
+</div>
+
+<div id="how" class="card" hidden>
+  <h2>🎯 Objetivo</h2>
+  <p>Dar <b>jaque mate</b>: atacar al rey rival de modo que no pueda escapar, ni se pueda bloquear o capturar la pieza que lo ataca. Si el jugador no tiene jugadas pero su rey no está en jaque, es <b>tablas</b> (rey ahogado).</p>
+  <h2>♟ Cómo se mueve cada pieza</h2>
+  <ul>
+    <li><b>Peón ♟:</b> avanza 1 casilla (2 en su primer movimiento). Captura en diagonal, un paso adelante.</li>
+    <li><b>Torre ♜:</b> en línea recta, horizontal o vertical, cualquier distancia.</li>
+    <li><b>Alfil ♝:</b> en diagonal, cualquier distancia. Siempre se queda en su color de casilla.</li>
+    <li><b>Caballo ♞:</b> en "L" (2 casillas y 1 al lado). Es la única pieza que salta.</li>
+    <li><b>Dama ♛:</b> como torre y alfil juntos. La pieza más poderosa.</li>
+    <li><b>Rey ♚:</b> 1 casilla en cualquier dirección. Nunca puede quedar en jaque.</li>
+  </ul>
+  <h2>✨ Movimientos especiales</h2>
+  <ul>
+    <li><b>Enroque:</b> el rey se mueve 2 casillas hacia una torre y la torre pasa al otro lado. Se hace si ni el rey ni esa torre se han movido, no hay piezas en medio y el rey no está en jaque ni cruza casillas atacadas. Para hacerlo, mueve el rey 2 casillas.</li>
+    <li><b>Captura al paso:</b> si un peón rival avanza 2 casillas y queda a tu lado, puedes capturarlo en diagonal como si hubiera avanzado 1, pero solo en la jugada inmediata.</li>
+    <li><b>Coronación:</b> un peón que llega al final del tablero se convierte en pieza. Aquí siempre se convierte en dama.</li>
+  </ul>
+  <h2>🖱 Cómo usar este juego</h2>
+  <p>Toca una de tus piezas: se marcan sus jugadas (punto = mover, aro rojo = capturar). Toca la casilla destino. Usa <b>Pista</b> si estás atascado y <b>Deshacer</b> para corregir.</p>
+  <h2>💡 Consejos de movimientos</h2>
+  <ul>
+    <li><b>Controla el centro</b> (e4, d4, e5, d5) con peones y piezas.</li>
+    <li><b>Desarrolla caballos y alfiles</b> antes de mover la dama.</li>
+    <li><b>Enroca pronto</b> para poner a salvo al rey.</li>
+    <li>No muevas la misma pieza dos veces en la apertura sin necesidad.</li>
+    <li>Antes de mover, mira <b>qué amenaza tu rival</b> y si tu pieza queda sin protección.</li>
+    <li>Valor aproximado: peón 1, caballo 3, alfil 3, torre 5, dama 9. Cambia piezas solo si te conviene.</li>
+    <li>En el final, <b>activa el rey</b> y avanza tus peones para coronar.</li>
+    <li>Busca <b>horquillas</b>: un caballo o peón que ataque dos piezas a la vez.</li>
+  </ul>
+  <button class="lv pri" onclick="show('menu')" style="text-align:center">← Volver al menú</button>
+</div>
+
+<div id="game" hidden>
+  <div id="msg"></div>
+  <div id="bd"></div>
+  <div class="bar">
+    <button onclick="hintMove()">💡 Pista</button>
+    <button onclick="undo()">↩ Deshacer</button>
+    <button onclick="start(lv)">🔄 Reiniciar</button>
+    <button onclick="show('menu')">☰ Menú</button>
+  </div>
+  <p class="mut" id="lvl"></p>
+</div>
+<div id="look" class="card" style="margin-top:12px">
+  <b>🎨 Color del tablero (6 opciones)</b><div class="sw" id="sw"></div>
+  <b>♟ Estilo de las piezas (6 opciones)</b><div class="sw" id="sts"></div>
+  <div id="pv"></div>
+</div>
+</div>
+
+<script>
+// ---------- Datos básicos ----------
+// Tablero: arreglo de 64 casillas (0 = a8 ... 63 = h1). Mayúscula = blancas, minúscula = negras.
+const G={P:'♟',N:'♞',B:'♝',R:'♜',Q:'♛',K:'♚'}, V={p:100,n:320,b:330,r:500,q:900,k:0};
+const LV={1:[1,220],2:[2,25],3:[4,0]}, NOM={1:'Básico',2:'Intermedio',3:'Avanzado'}; // [profundidad, ruido]
+const KN=[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+const DG=[[1,1],[1,-1],[-1,1],[-1,-1]], ST=[[1,0],[-1,0],[0,1],[0,-1]];
+const W=ch=>!!ch&&ch<'a';
+
+function initState(){
+  const b=[];
+  'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'.split('/').forEach(r=>{
+    for(const ch of r){ if(ch>'0'&&ch<'9') for(let i=0;i<+ch;i++) b.push(''); else b.push(ch); }
+  });
+  return {b, t:'w', c:'KQkq', ep:-1}; // t=turno, c=derechos de enroque, ep=casilla de captura al paso
+}
+
+// ¿La casilla sq está atacada por el color 'by'?
+function att(b,sq,by){
+  const r=sq>>3,c=sq&7,w=by==='w';
+  const at=(rr,cc)=>rr>=0&&rr<8&&cc>=0&&cc<8?b[rr*8+cc]:null;
+  for(const dc of[-1,1]) if(at(r+(w?1:-1),c+dc)===(w?'P':'p')) return true;
+  for(const[dr,dc]of KN) if(at(r+dr,c+dc)===(w?'N':'n')) return true;
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if((dr||dc)&&at(r+dr,c+dc)===(w?'K':'k')) return true;
+  for(const[dirs,ps]of[[DG,'bq'],[ST,'rq']]) for(const[dr,dc]of dirs){
+    let rr=r+dr,cc=c+dc,x;
+    while((x=at(rr,cc))===''){rr+=dr;cc+=dc}
+    if(x&&W(x)===w&&ps.includes(x.toLowerCase())) return true;
+  }
+  return false;
+}
+
+// Genera jugadas pseudo-legales (aún sin comprobar que el rey quede a salvo)
+function gen(S){
+  const{b,t,c,ep}=S,w=t==='w',ms=[];
+  const add=(f,to,x)=>ms.push({f,to,...x});
+  for(let i=0;i<64;i++){
+    const ch=b[i]; if(!ch||W(ch)!==w) continue;
+    const p=ch.toLowerCase(),r=i>>3,cl=i&7;
+    if(p==='p'){
+      const d=w?-1:1,r1=r+d;
+      if(r1<0||r1>7) continue;
+      const pr=r1===(w?0:7);
+      if(!b[r1*8+cl]){
+        add(i,r1*8+cl,{pr});
+        if(r===(w?6:1)&&!b[(r1+d)*8+cl]) add(i,(r1+d)*8+cl,{dp:1});
+      }
+      for(const dc of[-1,1]){
+        const cc=cl+dc; if(cc<0||cc>7) continue;
+        const to=r1*8+cc;
+        if(b[to]&&W(b[to])!==w) add(i,to,{pr}); else if(to===ep) add(i,to,{ep:1});
+      }
+    } else if(p==='n'||p==='k'){
+      for(const[dr,dc]of(p==='n'?KN:[...DG,...ST])){
+        const rr=r+dr,cc=cl+dc; if(rr<0||rr>7||cc<0||cc>7) continue;
+        const to=rr*8+cc; if(!b[to]||W(b[to])!==w) add(i,to);
+      }
+    } else {
+      for(const[dr,dc]of(p==='b'?DG:p==='r'?ST:[...DG,...ST])){
+        let rr=r+dr,cc=cl+dc;
+        while(rr>=0&&rr<8&&cc>=0&&cc<8){
+          const to=rr*8+cc;
+          if(!b[to]) add(i,to); else { if(W(b[to])!==w) add(i,to); break; }
+          rr+=dr;cc+=dc;
+        }
+      }
+    }
+  }
+  // Enroque
+  const o=w?'b':'w',row=w?56:0,K=w?'K':'k',R=w?'R':'r';
+  if(b[row+4]===K&&!att(b,row+4,o)){
+    if(c.includes(K)&&b[row+7]===R&&!b[row+5]&&!b[row+6]&&!att(b,row+5,o)) add(row+4,row+6,{cs:1});
+    if(c.includes(w?'Q':'q')&&b[row]===R&&!b[row+1]&&!b[row+2]&&!b[row+3]&&!att(b,row+3,o)) add(row+4,row+2,{cs:1});
+  }
+  return ms;
+}
+
+// Aplica una jugada y devuelve el nuevo estado (el original no se modifica)
+function app(S,m){
+  const b=S.b.slice(),ch=b[m.f],w=S.t==='w';
+  let c=S.c,ep=-1;
+  b[m.to]=m.pr?(w?'Q':'q'):ch; b[m.f]='';
+  if(m.ep) b[m.to+(w?8:-8)]='';
+  if(m.cs){ const row=m.f-4; if(m.to>m.f){b[row+5]=b[row+7];b[row+7]=''} else {b[row+3]=b[row];b[row]=''} }
+  if(m.dp) ep=(m.f+m.to)/2;
+  if(ch==='K') c=c.replace(/[KQ]/g,'');
+  if(ch==='k') c=c.replace(/[kq]/g,'');
+  for(const s of[m.f,m.to]){
+    if(s===63) c=c.replace('K',''); if(s===56) c=c.replace('Q','');
+    if(s===7) c=c.replace('k','');  if(s===0) c=c.replace('q','');
+  }
+  return {b,t:w?'b':'w',c,ep};
+}
+const kingSq=(b,w)=>b.indexOf(w?'K':'k');
+function legal(S){
+  const w=S.t==='w',o=w?'b':'w';
+  return gen(S).filter(m=>{const n=app(S,m);return !att(n.b,kingSq(n.b,w),o)});
+}
+const inCheck=S=>{const w=S.t==='w';return att(S.b,kingSq(S.b,w),w?'b':'w')};
+
+// ---------- Inteligencia artificial ----------
+// Evaluación (positivo = ventaja blanca): material + centro + avance de peones
+function ev(b){
+  let s=0;
+  for(let i=0;i<64;i++){
+    const ch=b[i]; if(!ch) continue;
+    const p=ch.toLowerCase(),w=W(ch),r=i>>3,c=i&7;
+    let v=V[p]; const cen=7-Math.abs(c-3.5)-Math.abs(r-3.5);
+    if(p==='p') v+=(w?6-r:r-1)*8+cen*2; else if(p==='n'||p==='b') v+=cen*6; else if(p==='q') v+=cen;
+    s+=w?v:-v;
+  }
+  return s;
+}
+// Búsqueda negamax con poda alfa-beta
+function srch(S,d,a,b){
+  if(!d) return (S.t==='w'?1:-1)*ev(S.b);
+  const ms=legal(S);
+  if(!ms.length) return inCheck(S)?-99000-d:0;
+  const val=m=>S.b[m.to]?V[S.b[m.to].toLowerCase()]:0;
+  ms.sort((x,y)=>val(y)-val(x));
+  for(const m of ms){
+    const s=-srch(app(S,m),d-1,-b,-a);
+    if(s>=b) return b; if(s>a) a=s;
+  }
+  return a;
+}
+function best(S,d,noise){
+  let bm=null,bs=-1e9;
+  for(const m of legal(S)){
+    const s=-srch(app(S,m),d-1,-1e9,1e9)+Math.random()*noise;
+    if(s>bs){bs=s;bm=m}
+  }
+  return bm;
+}
+
+// ---------- Interfaz ----------
+let S,hist=[],sel=-1,lv=1,me='w',over=false,busy=false,last=null,hint=null;
+const $=id=>document.getElementById(id), msg=t=>$('msg').textContent=t;
+function show(id){['menu','how','game'].forEach(x=>$(x).hidden=x!==id);$('look').hidden=id==='how'}
+
+function pick(c){me=c;$('cw').classList.toggle('on',c==='w');$('cb').classList.toggle('on',c==='b')}
+const turno=()=>'Tu turno ('+(me==='w'?'blancas':'negras')+')';
+function start(l){
+  lv=l;S=initState();hist=[];sel=-1;last=null;hint=null;over=false;busy=false;
+  $('lvl').textContent='Nivel: '+NOM[lv]+' · Juegas con '+(me==='w'?'blancas':'negras');
+  show('game');draw();next();
+}
+function draw(){
+  const L=sel>=0?legal(S).filter(m=>m.f===sel).map(m=>m.to):[];
+  const ck=inCheck(S)?kingSq(S.b,S.t==='w'):-1;
+  $('bd').innerHTML=(me==='w'?S.b.map((ch,i)=>[ch,i]):S.b.map((ch,i)=>[ch,i]).reverse()).map(([ch,i])=>{
+    let k='sq '+(((i>>3)+(i&7))%2?'d':'l');
+    if(last&&(i===last.f||i===last.to)) k+=' lm';
+    if(hint&&(i===hint.f||i===hint.to)) k+=' ht';
+    if(i===sel) k+=' sel';
+    if(i===ck) k+=' ck';
+    if(L.includes(i)) k+=ch?' cap':' dot';
+    return `<div class="${k}" data-i="${i}">${ch?pc(ch):''}</div>`;
+  }).join('');
+}
+$('bd').addEventListener('click',e=>{
+  const q=e.target.closest('.sq'); if(!q||over||busy||S.t!==me) return;
+  const i=+q.dataset.i, m=legal(S).find(x=>x.f===sel&&x.to===i);
+  if(m){ hist.push(S);S=app(S,m);last=m;sel=-1;hint=null;draw();next(); return; }
+  sel=S.b[i]&&W(S.b[i])===(me==='w')?i:-1;hint=null;draw();
+});
+function next(){
+  if(!legal(S).length){
+    over=true;
+    msg(inCheck(S)?(S.t===me?'Jaque mate. Gana la máquina.':'🏆 ¡Jaque mate! ¡Ganaste!'):'Tablas por rey ahogado.');
+    draw();return;
+  }
+  if(S.t!==me){
+    busy=true;msg('La máquina piensa…');
+    setTimeout(()=>{
+      const[d,n]=LV[lv],m=best(S,d,n);
+      hist.push(S);S=app(S,m);last=m;busy=false;draw();next();
+    },60);
+  } else msg((inCheck(S)?'¡Jaque! ':'')+turno());
+}
+function undo(){
+  if(busy||!hist.length) return;
+  S=hist.pop(); if(S.t!==me&&hist.length) S=hist.pop();
+  over=false;last=null;hint=null;sel=-1;draw();next();
+}
+function hintMove(){
+  if(busy||over||S.t!==me) return;
+  hint=best(S,2,0);sel=-1;draw();
+}
+
+// ---------- Apariencia: 6 colores de tablero y 6 estilos de pieza ----------
+// Cada color: [nombre, casilla clara, casilla oscura, piezas blancas, piezas negras]
+const TH=[['Verde','#eeeed2','#769656','#fff','#111'],['Madera','#f0d9b5','#b58863','#fff8e7','#2b1b0e'],
+ ['Azul','#dee3e6','#8ca2ad','#fff','#10243a'],['Morado','#e8dff5','#9f7fd0','#fff','#2a1245'],
+ ['Rojo','#f7e1d7','#d0716b','#fff4ee','#3a0f0f'],['Gris','#d4d7dc','#5b6370','#fff','#12151a']];
+const STY=['Clásico','Contorno','Fichas','Iniciales','Neón','Metálico'];
+const LET={K:'R',Q:'D',R:'T',B:'A',N:'C',P:'P'}, OUT={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙'};
+let th=0,st=0;
+// Dibuja una pieza según el estilo elegido (Iniciales usa R, D, T, A, C, P)
+function pc(ch){
+  const w=W(ch),p=ch.toUpperCase();
+  const t=st===3?LET[p]:(st===1&&w?OUT[p]:G[p])+'\uFE0E';
+  return `<span class="${w?'w':'b'}">${t}</span>`;
+}
+function look(){
+  if(!TH[th])th=0; if(!STY[st])st=0;
+  const t=TH[th],s=document.querySelector('.wrap').style;
+  s.setProperty('--l',t[1]);s.setProperty('--d',t[2]);s.setProperty('--pw',t[3]);s.setProperty('--pb',t[4]);
+  $('bd').dataset.st=st;$('pv').dataset.st=st;
+  $('pv').innerHTML=Array.from({length:12},(_,k)=>{const r=k/6|0,c=k%6,p='KQRBNP'[c];
+    return `<div class="sq ${(r+c)%2?'d':'l'}">${pc(r?p.toLowerCase():p)}</div>`}).join('');
+  $('sw').innerHTML=TH.map((x,i)=>`<button class="sb${i===th?' on':''}" onclick="th=${i};look()" style="background:linear-gradient(135deg,${x[1]} 50%,${x[2]} 50%);color:#000;text-shadow:0 0 3px #fff,0 0 3px #fff">${x[0]}</button>`).join('');
+  $('sts').innerHTML=STY.map((n,i)=>`<button class="sb${i===st?' on':''}" onclick="st=${i};look()">${n}</button>`).join('');
+  if(S) draw();
+  try{localStorage.setItem('ajedrez',JSON.stringify([th,st]))}catch(e){}
+}
+try{[th,st]=JSON.parse(localStorage.getItem('ajedrez'))||[0,0]}catch(e){}
+look();
+</script>
+</body>
+</html>
